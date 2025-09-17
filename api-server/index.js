@@ -1,8 +1,13 @@
 const express = require("express");
 const bodyParser = require("body-parser");
+const jwt = require("jsonwebtoken");
 
 const app = express();
 app.use(bodyParser.json());
+
+// JWT Secret (In production, this should be stored securely as an environment variable)
+const JWT_SECRET = "joe-robot-shop-secret-key";
+
 /* 
   IMPORTANT:
     ***NEVER*** store credentials unencrypted like this.
@@ -23,6 +28,24 @@ const users = {
   },
 };
 let cart = [];
+
+// JWT Middleware for protected routes
+const authenticateToken = (req, res, next) => {
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
+
+  if (!token) {
+    return res.status(401).json({ message: 'Access token required' });
+  }
+
+  jwt.verify(token, JWT_SECRET, (err, user) => {
+    if (err) {
+      return res.status(403).json({ message: 'Invalid or expired token' });
+    }
+    req.user = user;
+    next();
+  });
+};
 
 // use this to add a 1 second delay to all requests
 // app.use(function (req, res, next) {
@@ -208,12 +231,12 @@ app.get("/api/products", (req, res) => {
   res.send(products);
 });
 
-app.post("/api/cart", (req, res) => {
+app.post("/api/cart", authenticateToken, (req, res) => {
   cart = req.body;
   setTimeout(() => res.status(201).send(), 20);
 });
 
-app.get("/api/cart", (req, res) => res.send(cart));
+app.get("/api/cart", authenticateToken, (req, res) => res.send(cart));
 
 app.post("/api/register", (req, res) =>
   setTimeout(() => {
@@ -239,11 +262,25 @@ app.post("/api/register", (req, res) =>
 app.post("/api/sign-in", (req, res) => {
   const user = users[req.body.email];
   if (user && user.password === req.body.password) {
+    // Create JWT token
+    const token = jwt.sign(
+      {
+        userId: user.email, // Using email as userId since that's the key
+        firstName: user.firstName,
+        lastName: user.lastName,
+        email: user.email
+      },
+      JWT_SECRET,
+      { expiresIn: '24h' } // Token expires in 24 hours
+    );
+
     res.status(200).send({
-      userId: user.userId,
-      firstName: user.firstName,
-      lastName: user.lastName,
-      email: user.email,
+      user: {
+        firstName: user.firstName,
+        lastName: user.lastName,
+        email: user.email,
+      },
+      token: token
     });
   } else {
     res.status(401).send("Invalid user credentials.");

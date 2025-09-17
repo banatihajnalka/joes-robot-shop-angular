@@ -5,6 +5,7 @@ import { CartComponent } from './cart/cart.component';
 import { CatalogComponent } from './catalog/catalog.component';
 import { SignInComponent } from './user/sign-in/sign-in.component';
 import { TemplateFormControlsComponent } from './user/template-form-controls/template-form-controls.component';
+import { AuthGuard } from './guards/auth.guard';
 
 const routes: Routes = [
   {
@@ -21,11 +22,13 @@ const routes: Routes = [
     path: 'catalog',
     component: CatalogComponent,
     title: "Catalog - Joe's Robot Shop",
+    canActivate: [AuthGuard]
   },
   {
     path: 'cart',
     component: CartComponent,
-    title: "Catalog - Joe's Robot Shop",
+    title: "Cart - Joe's Robot Shop",
+    canActivate: [AuthGuard]
   },
   {
     path: 'sign-in',
